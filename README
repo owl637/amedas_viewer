@@ -1,0 +1,17 @@
+weather_scraper_app/
+├── app/
+│   ├── __init__.py
+│   ├── routes.py         # Flaskのルーティング
+│   ├── scraper.py        # スクレイピング処理
+│   ├── plotter.py        # Plotlyによる可視化処理
+│   ├── utils.py          # 補助関数（例：ファイル保存、日付変換など）
+│   ├── templates/
+│   │   ├── index.html    # 入力フォーム＋グラフ表示用
+│   ├── static/
+│   │   ├── css/
+│   │   ├── js/
+│   │   └── images/
+├── data/                 # 一時CSV保存フォルダ（.gitignore推奨）
+├── run.py                # アプリ起動用
+├── requirements.txt
+└── README.md

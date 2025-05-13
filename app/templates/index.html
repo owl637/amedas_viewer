@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>気象庁観測データ取得</title>
+</head>
+<body>
+    <h1>気象データ取得フォーム</h1>
+    <form action="/get_data" method="post">
+        <label>開始日時: <input type="datetime-local" name="start_time"></label><br>
+        <label>終了日時: <input type="datetime-local" name="end_time"></label><br>
+        <button type="submit">データ取得</button>
+    </form>
+</body>
+</html>
