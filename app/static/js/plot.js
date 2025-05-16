@@ -20,7 +20,7 @@ document.addEventListener("DOMContentLoaded", function () {
             tickfont: { color: "red" },
             overlaying: "y",
             side: "right",
-            position: 1.0,
+            position: 0.99,
             showticklabels: true,
             showgrid: false
         },
