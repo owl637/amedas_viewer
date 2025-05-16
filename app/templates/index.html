@@ -3,13 +3,138 @@
 <head>
     <meta charset="UTF-8">
     <title>気象庁観測データ取得</title>
+    <!-- OKの順番：Plotly本体を先に -->
+    <script src="https://cdn.plot.ly/plotly-2.27.1.min.js"></script>
+    <script src="{{ url_for('static', filename='js/plot.js') }}"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
     <h1>気象データ取得フォーム</h1>
-    <form action="/get_data" method="post">
-        <label>開始日時: <input type="datetime-local" name="start_time"></label><br>
-        <label>終了日時: <input type="datetime-local" name="end_time"></label><br>
-        <button type="submit">データ取得</button>
+<div class="form-container">
+
+    <!-- 🔵 データ取得用フォーム -->
+    <form method="post">
+        <label>府県:
+            <select id="pref-select" name="prec_no">
+                {% for p in prefectures %}
+                    <option value="{{ p.prec_no }}"
+                        {% if p.prec_no|string == prec_no|string %}selected{% endif %}>
+                        {{ p.pref_name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </label>
+
+        <label>観測地点:
+            <select id="block-select" name="block_no">
+                <!-- JSで動的に追加 -->
+            </select>
+        </label>
+        <br>
+
+        <label>開始日時: <input type="datetime-local" name="start_time" value="{{ start_time }}"></label><br>
+        <label>終了日時: <input type="datetime-local" name="end_time" value="{{ end_time }}"></label><br>
+
+        <button type="submit" name="action" value="fetch">データ取得</button>
+
+        {% if columns and columns|length > 0 %}
+            <a href="{{ url_for('main.download') }}">
+                <button type="button">CSVダウンロード</button>
+            </a>
+        {% endif %}
     </form>
+
+    <!-- 🔵 グラフ表示用フォーム（columns があるときのみ） -->
+    {% if columns %}
+    <form method="post">
+        <!-- 🔒 隠しフィールドで状態を引き継ぐ -->
+        <input type="hidden" name="block_no" value="{{ block_no }}">
+        <input type="hidden" name="prec_no" value="{{ prec_no }}">
+        <input type="hidden" name="start_time" value="{{ start_time }}">
+        <input type="hidden" name="end_time" value="{{ end_time }}">
+
+        <fieldset>
+            <legend>表示要素（最大3つ）</legend>
+            <table>
+                <tbody>
+                {% for i in range(0, columns|length, 2) %}
+                    <tr>
+                        <td>
+                            {% set col1 = columns[i] %}
+                            <label>
+                                <input type="checkbox" name="elements" value="{{ col1 }}"
+                                    {% if selected and col1 in selected %}checked{% endif %}>
+                                {{ col1 }}
+                            </label>
+                        </td>
+                        <td>
+                            {% if i + 1 < columns|length %}
+                                {% set col2 = columns[i + 1] %}
+                                <label style="margin-left: 20px;">
+                                    <input type="checkbox" name="elements" value="{{ col2 }}"
+                                        {% if selected and col2 in selected %}checked{% endif %}>
+                                    {{ col2 }}
+                                </label>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </fieldset>
+
+        <button type="submit" name="action" value="plot">グラフ表示</button>
+    </form>
+    {% endif %}
+
+</div>
+
+<!-- 🔵 プロットデータがあるときに描画エリア -->
+{% if plot_data %}
+    <div id="plot"></div>
+    <script id="plot-data" type="application/json">
+        {{ plot_data | tojson | safe }}
+    </script>
+{% endif %}
+
+<!-- 🔵 観測地点データを JS に渡す -->
+<script id="stations-data" type="application/json">
+    {{ stations | tojson | safe }}
+</script>
+
+<!-- 🔵 JavaScriptで観測地点を動的に切り替え -->
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const stations = JSON.parse(document.getElementById("stations-data").textContent);
+        const prefSelect = document.getElementById("pref-select");
+        const blockSelect = document.getElementById("block-select");
+
+        const selectedPrecNo = "{{ prec_no }}";
+        const selectedBlockNo = "{{ block_no }}";
+        console.log("selectedPrecNo:", selectedPrecNo);
+        console.log("selectedBlockNo:", selectedBlockNo);
+
+        function filterStations(precNo, selectedBlock = null) {
+            blockSelect.innerHTML = "";
+
+            const filtered = stations.filter(s => String(s.prec_no) === String(precNo));
+            filtered.forEach(s => {
+                const opt = document.createElement("option");
+                opt.value = s.block_no;
+                opt.textContent = s.name;
+                if (String(s.block_no) === String(selectedBlock)) {
+                    opt.selected = true;
+                }
+                blockSelect.appendChild(opt);
+            });
+        }
+
+        filterStations(selectedPrecNo, selectedBlockNo);
+
+        prefSelect.addEventListener("change", () => {
+            filterStations(prefSelect.value);
+        });
+    });
+</script>
 </body>
 </html>

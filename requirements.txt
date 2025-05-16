@@ -1,3 +1,7 @@
 Flask
 Pillow
 gunicorn
+pandas
+numpy
+requests
+uuid

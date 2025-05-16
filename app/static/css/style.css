@@ -1,0 +1,75 @@
+/* 横並びフォーム */
+.form-container {
+    display: flex;
+    gap: 2rem;  /* フォーム同士の間隔 */
+    align-items: flex-start;
+    flex-wrap: wrap; /* スクリーンサイズに応じて折り返す */}
+
+/* 各フォームを囲う */
+.form-container {
+    display: flex;
+    flex-wrap: wrap;       /* ← ここがポイント */
+    gap: 2rem;
+    align-items: flex-start;
+    margin-bottom: 2rem;
+}
+
+/* 幅の上限を設けて、折り返しやすくする */
+.form-box {
+    border: 1px solid #ccc;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    background-color: #f9f9f9;
+    flex: 1 1 300px;        /* 幅の最小限・最大限の調整に最適 */
+    box-sizing: border-box;
+}
+
+.checkbox-grid {
+    gap: 1rem; /* チェックボックスの間隔 */
+    display: grid;
+}
+
+input[type="checkbox"] {
+    margin-right: 0.5rem; /* チェックボックスとラベルの間隔 */
+}
+
+input[type="datetime-local"] {
+    padding: 0.3rem; /* 内側の余白 */
+    border: 1px solid #ccc; /* 枠線 */
+    border-radius: 0.25rem; /* 角を丸く */
+    margin-top: 0.5rem; /* 上の余白 */
+    font-size: 1rem; /* フォントサイズ */
+    box-sizing: border-box; /* パディングとボーダーを含めた幅計算 */
+}
+
+select {
+    padding: 0.3rem; /* 内側の余白 */
+    border: 1px solid #ccc; /* 枠線 */
+    border-radius: 0.25rem; /* 角を丸く */
+    margin-top: 0.5rem; /* 上の余白 */
+    font-size: 1rem; /* フォントサイズ */
+    box-sizing: border-box; /* パディングとボーダーを含めた幅計算 */
+}
+
+
+/* 各ボタンのマージン調整 */
+button {
+    margin-top: 1rem;
+    padding: 0.5rem 1rem;
+    background-color: #007bff;
+    color: white;
+    font-size: 1rem;
+    border: none;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+
+label {
+    font-weight: bold;
+    font-size: 1.1rem;
+}
