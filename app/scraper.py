@@ -56,75 +56,49 @@ def scrape_weather_data(start_time: str, end_time: str, output_csv: str,
             print(f"[{year}-{month}-{day}] 取得失敗: {e}")
             continue
 
-    rows = soup.find_all("tr", class_="mtx")
+        if kind == "10min_a1":
+            keys = ["降水量", "気温", "相対湿度", "平均風速", "風向", "最大風速", "最大風向", "日照時間"]
+        else:
+            keys = ["現地気圧", "海面気圧", "降水量", "気温", "相対湿度", "平均風速", "風向", "最大風速", "最大風向", "日照時間"]
 
-    # 共通のカラム名
-    keys = [
-        "現地気圧", "海面気圧", "降水量", "気温", "相対湿度",
-        "平均風速", "風向", "最大風速", "最大風向", "日照時間"
-    ]
-
-    if kind == "10min_a1":
-        keys = [
-            "降水量", "気温", "相対湿度",
-            "平均風速", "風向", "最大風速", "最大風向", "日照時間"
-        ]
-
-    all_data = []
-
-    for row in rows:
-        cols = row.find_all("td")
-        if len(cols) < 2:
+        table = soup.find("table", id="tablefix1")
+        if not table:
+            print(f"[{year}-{month}-{day}] tablefix1 が見つかりませんでした")
             continue
 
-        # 時刻の処理（24:00 → 翌日 00:00）
-        time_text = cols[0].text.strip()
-        try:
-            hour, minute = map(int, time_text.split(":"))
-            time_obj = datetime.datetime(year, month, day) + datetime.timedelta(hours=hour % 24, minutes=minute)
-            if hour == 24:
-                time_obj += datetime.timedelta(days=1)
-        except Exception:
-            continue
+        rows = table.find_all("tr")
 
-        record = {"時": time_obj}
-        for i, key in enumerate(keys, start=1):
+        for row in rows:
+            cols = row.find_all(["td", "th"])
+            if len(cols) < 2:
+                continue
+
+            time_text = cols[0].text.strip()
             try:
-                val = cols[i].text.strip()
-                # ✅ 欠損判定を正確にする（- や "" を None に）
-                if val in ["", "-", "--", "×", "///"]:
+                hour, minute = map(int, time_text.split(":"))
+                time_obj = datetime.datetime(year, month, day) + datetime.timedelta(hours=hour % 24, minutes=minute)
+                if hour == 24:
+                    time_obj += datetime.timedelta(days=1)
+            except Exception:
+                continue
+
+            record = {"時": time_obj}
+            for i, key in enumerate(keys, start=1):
+                try:
+                    val = cols[i].text.strip()
+                    record[key] = None if val in ["", "-", "--", "×", "///"] else val
+                except IndexError:
                     record[key] = None
-                else:
-                    record[key] = val
-            except IndexError:
-                record[key] = None
 
-        all_data.append(record)
-
-    # ステップ 1: スクレイピング直後の raw データ件数を確認
-    print("[DEBUG 1] all_data 行数:", len(all_data))
+            all_data.append(record)
 
     df = pd.DataFrame(all_data)
-    print("[DEBUG 2] DataFrame 作成後 行数:", len(df), "列:", df.columns.tolist())
-
-    # ステップ 2: dropna (列除去) 前の DataFrame のサンプル表示
-    print("[DEBUG 3] 最初の2行:\n", df.head(2))
-
-    # ステップ 3: カラム dropna 実行
     df.dropna(axis=1, how="all", inplace=True)
     df.drop(columns=[col for col in df.columns if df[col].eq("").all()], inplace=True)
-    print("[DEBUG 4] dropna (列) 後の列:", df.columns.tolist())
-
-    # ステップ 4: 行 dropna 実行
     df.dropna(axis=0, how="all", inplace=True)
-    print("[DEBUG 5] dropna (行) 後の行数:", len(df))
+    df = df[~df.apply(lambda row: all(cell in [None, ""] for cell in row.values), axis=1)]
 
-    # ステップ 5: 時刻での絞り込み前の最大・最小確認
-    if not df.empty:
-        print("[DEBUG 6] 時刻の最小:", df['時'].min(), "最大:", df['時'].max())
-    else:
-        print("[DEBUG 6] 時刻カラムが存在しないか、全データが dropされた")
+    df = df[(df["時"] >= start_dt) & (df["時"] <= end_dt)]
 
-    # 出力
     os.makedirs(os.path.dirname(output_csv), exist_ok=True)
     df.to_csv(output_csv, index=False, encoding="utf-8-sig")
