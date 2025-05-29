@@ -39,9 +39,12 @@ def index():
                 null_values = {"", "-", "--", "×", "///"}
                 df["日照時間"] = df["日照時間"].apply(lambda x: "" if pd.isna(x) else x)
                 df["日照時間"] = df["日照時間"].apply(lambda x: "" if x in null_values else x)
+                df["露点温度"] = df["露点温度"].apply(lambda x: "" if pd.isna(x) else x)
+                df["露点温度"] = df["露点温度"].apply(lambda x: "" if x in null_values else x)
 
                 for col in df.columns:
-                    if col == "日照時間":
+                    if col == "日照時間" or col == "露点温度":
+                        # 日照時間と露点温度は特別扱い
                         continue
                     df[col] = df[col].astype("object")  # まずobject型にしてから
                     df[col] = df[col].apply(
@@ -50,7 +53,6 @@ def index():
                     # print(df[col].isna().sum(), df[col].dtype)
 
             
-                print(df.tail())
                 # 2. 不要な列を削除（全部 None の列）
                 df = df.loc[:, ~df.apply(lambda col: all(cell is None for cell in col), axis=0)]
 
@@ -92,9 +94,13 @@ def index():
             null_values = {"", "-", "--", "×", "///"}
             df["日照時間"] = df["日照時間"].apply(lambda x: "" if pd.isna(x) else x)
             df["日照時間"] = df["日照時間"].apply(lambda x: "" if x in null_values else x)
+            df["露点温度"] = df["露点温度"].apply(lambda x: "" if pd.isna(x) else x)
+            df["露点温度"] = df["露点温度"].apply(lambda x: "" if x in null_values else x)
+            # 日照時間と露点温度は特別扱い
 
             for col in df.columns:
-                if col == "日照時間":
+                if col == "日照時間" or col == "露点温度":
+                    # 日照時間と露点温度は特別扱い
                     continue
                 df[col] = df[col].astype("object")  # まずobject型にしてから
                 df[col] = df[col].apply(

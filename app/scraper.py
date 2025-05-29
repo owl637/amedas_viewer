@@ -29,7 +29,7 @@ def calculate_dew_point_row(row):
     try:
         if is_empty_cell(T) or is_empty_cell(RH):
             print("Empty cell detected, returning NaN")
-            return np.nan
+            return None
         T = float(T)
         RH = float(RH)
 
