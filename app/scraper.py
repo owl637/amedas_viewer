@@ -3,6 +3,7 @@ import datetime
 import requests
 from bs4 import BeautifulSoup
 import os
+import numpy as np
 
 # 辞書をグローバルに定義
 DIRECTION_TO_DEGREES = {
@@ -11,6 +12,47 @@ DIRECTION_TO_DEGREES = {
     "南": 180, "南南西": 202.5, "南西": 225, "西南西": 247.5,
     "西": 270, "西北西": 292.5, "北西": 315, "北北西": 337.5
 }
+
+# 露点温度を計算する関数
+null_values = {"", "-", "--", "×", "///"}
+
+def to_none(cell):
+    return None if cell in null_values else cell
+def is_empty_cell(cell):
+    return pd.isna(cell) or cell in ["", "-", "--", "×", "///", None]
+
+def calculate_dew_point_row(row):
+    T = row.get("気温")
+    RH = row.get("相対湿度")
+    # print(f"Calculating dew point for T={T}, RH={RH}")
+
+    try:
+        if is_empty_cell(T) or is_empty_cell(RH):
+            print("Empty cell detected, returning NaN")
+            return np.nan
+        T = float(T)
+        RH = float(RH)
+
+        if RH <= 0 or RH > 100:
+            print("Invalid input, returning NaN")
+            return np.nan
+
+        a = 17.62
+        b = 243.12
+        gamma = (a * T) / (b + T) + np.log(RH / 100)
+        dew_point = (b * gamma) / (a - gamma)
+
+        if not np.isfinite(dew_point):
+            print("Computed dew point is not finite, returning NaN")
+            return np.nan
+
+        # print(f"Dew point calculated: {dew_point}")
+        return dew_point
+
+    except Exception as e:
+        print(f"Error calculating dew point: {e}")
+        return np.nan
+
 
 def try_fetch_valid_kind(base_url_template, prec_no, block_no, year, month, day):
     """
@@ -86,19 +128,26 @@ def scrape_weather_data(start_time: str, end_time: str, output_csv: str,
             for i, key in enumerate(keys, start=1):
                 try:
                     val = cols[i].text.strip()
-                    record[key] = None if val in ["", "-", "--", "×", "///"] else val
+                    record[key] = val
                 except IndexError:
                     record[key] = None
 
             all_data.append(record)
 
     df = pd.DataFrame(all_data)
-    df.dropna(axis=1, how="all", inplace=True)
-    df.drop(columns=[col for col in df.columns if df[col].eq("").all()], inplace=True)
-    df.dropna(axis=0, how="all", inplace=True)
-    df = df[~df.apply(lambda row: all(cell in [None, ""] for cell in row.values), axis=1)]
+
+    # 全ての値が NaN または "" の列を削除
+    # df = df.loc[:, ~df.apply(lambda col: all(cell in [None, ""] or pd.isna(cell) for cell in col), axis=0)]
+
+    # 全ての値が NaN または "" の行を削除
+    # df = df.loc[~df.apply(lambda row: all(cell in [None, ""] or pd.isna(cell) for cell in row), axis=1)]
 
     df = df[(df["時"] >= start_dt) & (df["時"] <= end_dt)]
-
+    
+    # 気温と相対湿度があれば、露点温度を計算
+    if {"気温", "相対湿度"}.issubset(df.columns):
+        print("露点温度を計算中...")
+        df["露点温度"] = df.apply(calculate_dew_point_row, axis=1)
+    # print(df.columns)
     os.makedirs(os.path.dirname(output_csv), exist_ok=True)
     df.to_csv(output_csv, index=False, encoding="utf-8-sig")

@@ -1,14 +1,19 @@
 from flask import Blueprint, render_template, request, send_file, flash, redirect, url_for
 import os
 import pandas as pd
+import numpy as np
 from .scraper import scrape_weather_data
 from flask import jsonify
 from .utils import load_station_list, load_prefecture_list
 from .config import CSV_CACHE_PATH
 
 main_bp = Blueprint("main", __name__)
+null_values = {"", "-", "--", "×", "///"}
 
-
+def to_none(cell):
+    return None if cell in null_values else cell
+def is_empty_cell(cell):
+    return pd.isna(cell) or cell in ["", "-", "--", "×", "///", None]
 # routes.py 修正（/get_dataの代わりに/indexをPOSTでも扱う）
 
 @main_bp.route("/", methods=["GET", "POST"])
@@ -29,6 +34,32 @@ def index():
                 scrape_weather_data(start_time, end_time, output_csv=CSV_CACHE_PATH,
                                     prec_no=int(prec_no), block_no=block_no)
                 df = pd.read_csv(CSV_CACHE_PATH)
+                
+                # 1. 一括で None に変換
+                null_values = {"", "-", "--", "×", "///"}
+                df["日照時間"] = df["日照時間"].apply(lambda x: "" if pd.isna(x) else x)
+                df["日照時間"] = df["日照時間"].apply(lambda x: "" if x in null_values else x)
+
+                for col in df.columns:
+                    if col == "日照時間":
+                        continue
+                    df[col] = df[col].astype("object")  # まずobject型にしてから
+                    df[col] = df[col].apply(
+                        lambda x: None if pd.isna(x) or x in null_values else x
+                    )
+                    # print(df[col].isna().sum(), df[col].dtype)
+
+            
+                print(df.tail())
+                # 2. 不要な列を削除（全部 None の列）
+                df = df.loc[:, ~df.apply(lambda col: all(cell is None for cell in col), axis=0)]
+
+                # 空の列を削除
+                df = df.loc[:, ~df.apply(lambda col: all(is_empty_cell(cell) for cell in col), axis=0)]
+
+                # 3. 念のため NaN を None に再変換（プロットのため）
+                df = df.where(df.notna(), None)
+
                 columns = list(df.columns)
                 columns.remove("時")
 
@@ -56,7 +87,34 @@ def index():
         elif action == "plot":
             print(f"action: {action}, start_time: {start_time}, end_time: {end_time}, block_no: {block_no}, prec_no: {prec_no}")
             df = pd.read_csv(CSV_CACHE_PATH)
+
+            # 1. 一括で None に変換
+            null_values = {"", "-", "--", "×", "///"}
+            df["日照時間"] = df["日照時間"].apply(lambda x: "" if pd.isna(x) else x)
+            df["日照時間"] = df["日照時間"].apply(lambda x: "" if x in null_values else x)
+
+            for col in df.columns:
+                if col == "日照時間":
+                    continue
+                df[col] = df[col].astype("object")  # まずobject型にしてから
+                df[col] = df[col].apply(
+                    lambda x: None if pd.isna(x) or x in null_values else x
+                )
+                # print(df[col].isna().sum(), df[col].dtype)
+
+            
+
+            # 2. 不要な列を削除（全部 None の列）
+            df = df.loc[:, ~df.apply(lambda col: all(cell is None for cell in col), axis=0)]
+
+            # 空の列を削除
+            df = df.loc[:, ~df.apply(lambda col: all(is_empty_cell(cell) for cell in col), axis=0)]
+
+            # 3. 念のため NaN を None に再変換（プロットのため）
+            df = df.where(df.notna(), None)
+
             columns = list(df.columns)
+
             columns.remove("時")
             selected = request.form.getlist("elements")
             plot_data = []
@@ -87,8 +145,8 @@ def index():
         prefectures=prefectures,
         prec_no=91,
         block_no=47945,
-        start_time="2025-01-01T00:00",
-        end_time="2025-01-02T00:00"
+        start_time="2025-05-01T00:00",
+        end_time="2025-05-02T00:00"
     )
 
 from io import BytesIO
